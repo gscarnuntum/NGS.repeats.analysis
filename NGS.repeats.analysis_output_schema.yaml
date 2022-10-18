@@ -1,4 +1,4 @@
-description: objects produced by ChIP-seq repeat analysis pipeline.
+description: objects produced by NGS repeats analysis pipeline.
 properties:
   samples:
     type: array

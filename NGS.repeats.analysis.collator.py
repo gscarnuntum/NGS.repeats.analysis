@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ChIP-seq Repeats Analysis Collator - project-level pipeline 
+NGS Repeats Analysis Collator - project-level pipeline 
 """
 
 __author__ = ["Gunnar Schotta"]
@@ -31,7 +31,7 @@ def parse_arguments():
     :return argparse.Namespace: parsed arguments namespace
     """
     parser = VersionInHelpParser(prog="ChIP-seq_collator",
-        description='ChIP-seq repeat analysis collator' , version=__version__)
+        description='NGS repeats analysis collator' , version=__version__)
     parser = pypiper.add_pypiper_args(parser, groups=['pypiper', 'looper'])
     parser.add_argument("-n", "--name",
                         help="Name of the project to use.", type=str)
@@ -48,7 +48,7 @@ def main():
     pm = pypiper.PipelineManager(name="ChIP-seq_collator", outfolder=outfolder,
                                  args=args, version=__version__)
 
-    cmd = (f"Rscript {tool_path('ChIP-seq.repeats.summarizer.R')} "
+    cmd = (f"Rscript {tool_path('NGS.repeats.summarizer.R')} "
            f"{args.config_file} {args.output_parent} {args.results}")
 
     pm.run(cmd, "lock.max")

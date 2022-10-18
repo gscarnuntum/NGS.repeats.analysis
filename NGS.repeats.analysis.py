@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ChIP-seq repeats analysis
+NGS repeats analysis
 """
 
 __auhor__ = ["Gunnar Schotta"]
@@ -17,12 +17,12 @@ import yaml
 import pypiper
 from pypiper import build_command
 
-PROTOCOLS = ["ChIP", "C&T", "C&R", "RNA", "ATAC"]
+PROTOCOLS = ["CHIP", "C&T", "C&R", "RNA", "ATAC"]
 
 """
 Main pipeline process.
 """
-parser = ArgumentParser(description='ChIP-seq repeats analysis version ' + __version__)
+parser = ArgumentParser(description='NGS repeats analysis version ' + __version__)
 parser = pypiper.add_pypiper_args(parser, groups=
     ['pypiper', 'looper', 'ngs'],
     required=["input", "genome", "sample-name", "output-parent"])
@@ -42,7 +42,7 @@ outfolder = os.path.abspath(os.path.join(args.output_parent, args.sample_name))
 
 global pm
 pm = pypiper.PipelineManager(
-    name="ChIP-seq repeat analysis", outfolder=outfolder, args=args, version=__version__)
+    name="NGS repeats analysis", outfolder=outfolder, args=args, version=__version__)
 
 global ngstk
 ngstk = pypiper.NGSTk(pm=pm)

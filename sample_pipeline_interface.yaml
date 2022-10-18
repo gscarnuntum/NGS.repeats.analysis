@@ -1,6 +1,6 @@
-pipeline_name: NGS.Repeats
+pipeline_name: NGS.repeats.analysis
 pipeline_type: sample
-path: /work/project/becgsc_001/dev/ChIP-seq.repeat.analysis.py/ChIP-seq.repeat.analysis.py
+path: /work/project/becgsc_001/dev/NGS.repeats.analysis.py/NGS.repeats.analysis.py
 command_template: >
   {pipeline.path}
   --output-parent { looper.results_subdir }

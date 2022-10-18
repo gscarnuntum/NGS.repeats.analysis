@@ -1,19 +1,10 @@
 #! /usr/bin/env Rscript
 #
-# PEPATAC_summarizer.R
+# NGS.repeats.summarizer.R
 #
 # Interface to produce project level summary files and reports 
-# for ATAC-seq output when called using `looper`
-#
-# Authors@R: as.person(c(
-#    "Jason Smith <jasonsmith@virginia.edu> [aut, cre]", 
-#    "Ryan Corces <mcorces@stanford.edu> [aut]"
-# ))
-#
-# Created: 5/18/17
-# Last updated: 05/10/2021
-#
-# usage: Rscript /path/to/Rscript/PEPATAC_summarizer.R 
+# for NGS output when called using `looper`
+# usage: Rscript /path/to/Rscript/NGS.repeats.summarizer.R 
 #        /path/to/project_config.yaml
 # Depends: R (>= 3.5.1)
 # Imports: PEPATACr, argparser
