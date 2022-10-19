@@ -26,11 +26,20 @@ tools:  # absolute paths to required tools
 
 # user configure 
 resources:
-  genome_config: ${REFGENIE}
-  adapters: /work/project/becgsc_001/software/Trimmomatic-0.39/adapters/NexteraPE-PE.fa  # Set to null to use default adapter file included in repository
-  gag_plus: /work/project/becgsc_001/dev/ChIP-seq.repeat.analysis.py/gag.plus.15k.bed #BED File with IAP plus orientation coordinates
-  gag_minus: /work/project/becgsc_001/dev/ChIP-seq.repeat.analysis.py/gag.minus.15k.bed #BED File with IAP minus orientation coordinates
-  repeats_SAF: /work/project/becgsc_001/genomes/mm10/Annotation/Genes/rmsk.mm10.160322.SAF #Repeat coordinates for FeatureCounts
+#  genome_config: ${REFGENIE}
+  adapters_nextera: /work/project/becgsc_001/software/Trimmomatic-0.39/adapters/NexteraPE-PE.fa
+  adapters_illumina: /work/project/becgsc_001/software/Trimmomatic-0.39/adapters/TruSeq3-PE-2.fa
+  gag_plus: /work/project/becgsc_001/dev/NGS.repeats.analysis/gag.plus.15k.bed #BED File with IAP plus orientation coordinates
+  gag_minus: /work/project/becgsc_001/dev/NGS.repeats.analysis/gag.minus.15k.bed #BED File with IAP minus orientation coordinates
+  repeats_SAF_mm10: /work/project/becgsc_001/genomes/mm10/Annotation/Genes/rmsk.mm10.160322.SAF #Repeat coordinates for FeatureCounts
+  repeats_SAFid_mm10: /work/project/becgsc_001/genomes/mm10/Annotation/Genes/rmsk.ids.mm10.160322.SAF #Repeat coordinates for FeatureCounts
+  STAR_mm10: /work/project/becgsc_001/genomes/mm10/STAR
+  STARgenome_mm10: /work/project/becgsc_001/genomes/mm10/STARgenome
+  STAR_hg38: /work/project/becgsc_001/genomes/hg38/STAR
+  STARgenome_hg38: /work/project/becgsc_001/genomes/hg38/STARgenome
 
 parameters:  # parameters passed to bioinformatic tools, subclassed by tool
 # Adjust/Add/Remove parameters for individual tools here
+  java_settings:
+    params: '' 
+    # Can modify java settings in this manner. e.g. -Xms1g -Xmx7g. Default is no modifications.

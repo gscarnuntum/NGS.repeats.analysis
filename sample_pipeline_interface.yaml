@@ -1,6 +1,6 @@
 pipeline_name: NGS.repeats.analysis
 pipeline_type: sample
-path: /work/project/becgsc_001/dev/NGS.repeats.analysis.py/NGS.repeats.analysis.py
+path: /work/project/becgsc_001/dev/NGS.repeats.analysis/NGS.repeats.analysis.py
 command_template: >
   {pipeline.path}
   --output-parent { looper.results_subdir }
@@ -18,8 +18,5 @@ compute:
   cores: 32
   partition: slim16
   time: 8:00:00
-bioconductor:
-  readFunName: runCOCOA
-  readFunPath: BiocProject/runCOCOA.R
 var_templates:
   refgenie_config: "$REFGENIE"
