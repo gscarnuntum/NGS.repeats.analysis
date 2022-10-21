@@ -33,6 +33,7 @@ library(pepr)
 library(data.table)
 library(reshape2)
 library(ggplot2)
+library(SummarizedExperiment)
 
 # Create a parser
 p <- arg_parser("Produce Summary Reports, Files, and Plots")
@@ -85,7 +86,7 @@ createStatsSummary <- function(samples, results_subdir) {
         t2 <- data.table(t(t$val))
         colnames(t2) <- t$stat
         t2 <- cbind(data.table(sample_name=sample), t2)
-        if (exists("stats")) {
+        if (exists("stats", inherits = F)) {
             stats <- rbind(stats, t2, fill=TRUE)
         } else {
             stats <- t2
@@ -112,9 +113,11 @@ prj <- invisible(suppressWarnings(pepr::Project(pep)))
 project_name    <- config(prj)$name
 project_protocol <- unique(invisible(suppressWarnings(pepr::sampleTable(prj)$protocol)))
 project_samples <- pepr::sampleTable(prj)$sample_name
-sample_table    <- data.table(sample_name=pepr::sampleTable(prj)$sample_name,
-                              genome=pepr::sampleTable(prj)$genome)
-				  
+#sample_table    <- data.table(sample_name=pepr::sampleTable(prj)$sample_name,
+#                              genome=pepr::sampleTable(prj)$genome)
+	
+sample_table <- data.table(prj@samples)
+
 # Set the output directory
 summary_dir <- suppressMessages(file.path(argv$output, "summary"))
 # Produce output directory (if needed)
@@ -133,7 +136,7 @@ if (dir.exists(argv$results)) {
     quit()
 }
 
-
+########################
 # Generate stats summary
 stats  <- createStatsSummary(project_samples, results_subdir)
 
@@ -146,20 +149,22 @@ message(sprintf("Summary (n=%s): %s",
         length(unique(stats$sample_name)), project_stats_file))
 fwrite(stats, project_stats_file, sep="\t", col.names=TRUE)
 
+#######################################
+# Generate FeatureCount classes summary
 
-# Generate FeatureCount summary
-
-write(paste0("Creating feature counts summary..."), stdout())
+write(paste0("Creating feature count classes summary..."), stdout())
 
 feature_counts_file <- file.path(summary_dir,
-                                paste0(project_name, '_feature_counts_summary.tsv'))
+                                paste0(project_name, '_fc_summary.tsv'))
+feature_counts_rds <- file.path(summary_dir,
+                                 paste0(project_name, '_fc_summary.rds'))
 for (sample in project_samples) {
   sample_output_folder <- file.path(results_subdir, sample)
   sample_fc_file   <- file.path(sample_output_folder, "feature_counts", 
                                 paste(sample,".fc.txt",sep=""))
   t <- fread(sample_fc_file, header=F,
              col.names=c('repeatID', 'length', sample), skip = 2)
-  if (exists("fc")) {
+  if (exists("fc", inherits = F)) {
     fc <- cbind(fc, t[,3])
   } else {
     fc <- t
@@ -168,53 +173,94 @@ for (sample in project_samples) {
 
 fwrite(fc, feature_counts_file, sep="\t", col.names=TRUE)
 
-# Generate IAP coverage summary
-write(paste0("Creating IAP coverage summary..."), stdout())
+#generate SummarizedExperiment
+fcm <- as.matrix(fc[,3:ncol(fc)])
+rownames(fcm) <- fc$repeatID
+fc.se <- SummarizedExperiment(assays = list("fc"=fcm), colData = sample_table)
+saveRDS(fc.se, file = feature_counts_rds)
 
-IAP_coverage_file <- file.path(summary_dir,
-                                 paste0(project_name, '_IAP_coverage_summary.tsv'))
 
+###################################################
+# Generate FeatureCount individual elements summary
+
+write(paste0("Creating feature counts elements summary..."), stdout())
+
+feature_counts_id_file <- file.path(summary_dir,
+                                paste0(project_name, '_fc_id_summary.tsv'))
+feature_counts_id_rds <- file.path(summary_dir,
+                                 paste0(project_name, '_fc_id_summary.rds'))
 for (sample in project_samples) {
   sample_output_folder <- file.path(results_subdir, sample)
-  sample_IAP_coverage_file   <- file.path(sample_output_folder, "IAP_coverage", 
-                                paste(sample,".IAP.norm.coverage.txt",sep=""))
-  cf <- fread(sample_IAP_coverage_file, header=F,
-             col.names=c(sample))
-  if (exists("coverage")) {
-    coverage <- cbind(coverage, cf)
+  sample_fc_file   <- file.path(sample_output_folder, "feature_counts", 
+                                paste(sample,".fc.id.txt",sep=""))
+  t <- fread(sample_fc_file, header=F,
+             col.names=c('repeatID', 'chr', 'start', 'end', 'strand', 'length', sample), skip = 2)
+  if (exists("fcid", inherits = F)) {
+    fcid <- cbind(fcid, t[,7])
   } else {
-    cf$pos <- c(1:nrow(cf))
-    coverage <- cf[,c(2,1)]
+    fcid <- t
   }
 }
 
-fwrite(coverage, file = IAP_coverage_file, sep="\t", 
-            col.names=TRUE, row.names=F, quote=F)
+fwrite(fcid, feature_counts_id_file, sep="\t", col.names=TRUE)
 
-# Generate IAP coverage plots
-write(paste0("Creating IAP coverage plots..."), stdout())
-
-IAP_coverage_merged <- file.path(summary_dir,
-                               paste0(project_name, '_IAP_coverage_merged.pdf'))
-IAP_coverage_samples <- file.path(summary_dir,
-                               paste0(project_name, '_IAP_coverage_samples.pdf'))
-IAP_coverage_merged_png <- file.path(summary_dir,
-                                 paste0(project_name, '_IAP_coverage_merged.png'))
-IAP_coverage_samples_png <- file.path(summary_dir,
-                                  paste0(project_name, '_IAP_coverage_samples.png'))
+#generate SummarizedExperiment
+fcidm <- as.matrix(fcid[,7:ncol(fcid)])
+rownames(fcidm) <- fcid$repeatID
+fcid.se <- SummarizedExperiment(assays = list(fcid=fcidm), colData = sample_table)
+saveRDS(fcid.se, file = feature_counts_id_rds)
 
 
-df <- melt(coverage ,  id.vars = 'pos', variable.name = 'samples')
+###################################################
+# Generate IAP coverage summary (for mouse samples)
+if (genome =="mm10")
+{
+	write(paste0("Creating IAP coverage summary..."), stdout())
 
-gm <- ggplot(df, aes(pos,value)) + geom_line(aes(colour = samples))
-ggsave(gm, filename = IAP_coverage_merged)
-ggsave(gm, filename = IAP_coverage_merged_png)
+	IAP_coverage_file <- file.path(summary_dir,
+                                 paste0(project_name, '_IAP_coverage_summary.tsv'))
 
-gs <- ggplot(df, aes(pos,value)) + geom_line() + facet_grid(samples ~ .)
-ggsave(gs, filename = IAP_coverage_samples)
-ggsave(gs, filename = IAP_coverage_samples_png)
+	for (sample in project_samples) {
+	  sample_output_folder <- file.path(results_subdir, sample)
+	  sample_IAP_coverage_file   <- file.path(sample_output_folder, "IAP_coverage", 
+	                                paste(sample,".IAP.norm.coverage.txt",sep=""))
+	  cf <- fread(sample_IAP_coverage_file, header=F,
+        	     col.names=c(sample))
+	  if (exists("coverage", inherits = F)) {
+	    coverage <- cbind(coverage, cf)
+	  } else {
+	    cf$pos <- c(1:nrow(cf))
+	    coverage <- cf[,c(2,1)]
+	  }
+	}
+	fwrite(coverage, file = IAP_coverage_file, sep="\t", 
+        	    col.names=TRUE, row.names=F, quote=F)
+
+	# Generate IAP coverage plots
+	write(paste0("Creating IAP coverage plots..."), stdout())
+
+	IAP_coverage_merged <- file.path(summary_dir,
+        	                       paste0(project_name, '_IAP_coverage_merged.pdf'))
+	IAP_coverage_samples <- file.path(summary_dir,
+	                               paste0(project_name, '_IAP_coverage_samples.pdf'))
+	IAP_coverage_merged_png <- file.path(summary_dir,
+        	                         paste0(project_name, '_IAP_coverage_merged.png'))
+	IAP_coverage_samples_png <- file.path(summary_dir,
+        	                          paste0(project_name, '_IAP_coverage_samples.png'))
 
 
+	df <- melt(coverage ,  id.vars = 'pos', variable.name = 'samples')
+
+	gm <- ggplot(df, aes(pos,value)) + geom_line(aes(colour = samples))
+	ggsave(gm, filename = IAP_coverage_merged)
+	ggsave(gm, filename = IAP_coverage_merged_png)
+
+	gs <- ggplot(df, aes(pos,value)) + geom_line() + facet_grid(samples ~ .)
+	ggsave(gs, filename = IAP_coverage_samples)
+	ggsave(gs, filename = IAP_coverage_samples_png)
+}
+
+################################################################################
 #Summarize Gene Counts for RNA-seq data (use column 3 with stranded information)
 if (project_protocol == "RNA") {
 	write(paste0("Creating gene counts summary..."), stdout())
@@ -227,11 +273,19 @@ if (project_protocol == "RNA") {
                                 paste(sample,".ReadsPerGene.out.tab",sep=""))
 		t <- fread(sample_gc_file, header=F,
 				col.names=c('geneID', 'unstranded', sample, 'antisense'), skip = 4)
-		if (exists("gct")) {
+		if (exists("gct", inherits = F)) {
 			gct <- cbind(gct, t[,3])
 		} else {
-			gct <- t
+			gct <- t[,c(1,3)]
 		}
 	}
 	fwrite(gct, gene_counts_file, sep="\t", col.names=TRUE)
+
+	#Summarized Experiment	
+	gene_counts_rds <- file.path(summary_dir,
+                                paste0(project_name, '_gene_counts_summary.rds'))
+	gcm <- as.matrix(gct[,2:ncol(gct)])
+	rownames(gcm) <- gct$geneID
+	gc.se <- SummarizedExperiment(assays = list(gc=gcm), colData = sample_table)
+	saveRDS(gc.se, file = gene_counts_rds)
 }

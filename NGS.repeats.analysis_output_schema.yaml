@@ -30,10 +30,15 @@ properties:
     description: "Summary statstics for all samples"
     path: "summary/{name}_stats_summary.tsv"
     type: file
-  feature_counts_file:
-    title: "Featurecounts file"
+  feature_counts_classes_file:
+    title: "Featurecounts individual repeats file"
+    description: "FeatureCount individual repeats summary for all samples"
+    path: "summary/{name}_fc_id_summary.tsv"
+    type: file
+  feature_counts_id_file:
+    title: "Featurecounts classes file"
     description: "FeatureCount summary for all samples"
-    path: "summary/{name}_feature_counts_summary.tsv"
+    path: "summary/{name}_fc_summary.tsv"
     type: file
   IAP_coverage_file:
     title: "IAP coverage file"
@@ -52,3 +57,8 @@ properties:
     thumbnail_path: "summary/{name}_IAP_coverage_merged.png"
     path: "summary/{name}_IAP_coverage_merged.pdf"
     type: image
+  gene_counts_file:
+    title: "Gene counts file"
+    description: "Gene counts summary for all samples"
+    path: "summary/{name}_gene_counts_summary.tsv"
+    type: file

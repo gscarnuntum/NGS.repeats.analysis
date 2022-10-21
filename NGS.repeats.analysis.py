@@ -176,21 +176,16 @@ trimmed_fastq = trimming_prefix + "_R1_trim.fastq.gz"
 trimmed_fastq_R2 = trimming_prefix + "_R2_trim.fastq.gz"
 fastqc_folder = os.path.join(outfolder, "fastqc")
 fastqc_report = os.path.join(fastqc_folder,
-    trimming_prefix + "_R1_trim_fastqc.html")
+    args.sample_name + "_R1_trim_fastqc.html")
 fastqc_report_R2 = os.path.join(fastqc_folder,
-    trimming_prefix + "_R2_trim_fastqc.html")
+    args.sample_name + "_R2_trim_fastqc.html")
 if ngstk.check_command(tools.fastqc):
     ngstk.make_dir(fastqc_folder)
 
 pm.info("trimmomatic local_input_files: {}".format(local_input_files))
  
-if not param.java_settings.params:
-    java_settings = '-Xmx{mem}'.format(mem=pm.mem)
-else:
-    java_settings = param.java_settings.params
 trim_cmd_chunks = [
-    "{java} {settings} -jar {trim} {PE} -threads {cores}".format(
-        java=tools.java, settings=java_settings,
+    "{trim} {PE} -threads {cores}".format(
         trim=tools.trimmomatic,
         PE="PE" if args.paired_end else "SE",
         cores=pm.cores),
@@ -226,12 +221,12 @@ def check_trim():
     cmd = (tools.fastqc + " --noextract --outdir " +
            fastqc_folder + " " + trimmed_fastq)
     pm.run(cmd, fastqc_report, nofail=False)
-    pm.report_object("FastQC report r1", fastqc_report)
+    pm.report_object("FastQC report trim r1", fastqc_report)
     if args.paired_end and trimmed_fastq_R2:
         cmd = (tools.fastqc + " --noextract --outdir " +
                fastqc_folder + " " + trimmed_fastq_R2)
         pm.run(cmd, fastqc_report_R2, nofail=False)
-        pm.report_object("FastQC report r2", fastqc_report_R2)
+        pm.report_object("FastQC report trim r2", fastqc_report_R2)
 
 pm.run(trim_cmd, trimmed_fastq, follow=check_trim)
 
@@ -319,8 +314,25 @@ def check_alignment_genome():
      pm.report_result("Mapping_rate", round((ur+mmr+mmxr)*100/ir,2))
      pm.report_result("Unique_Mapping_rate", round((ur)*100/ir,2))
      pm.report_result("Multi_Mapping_rate", round((mmr+mmxr)*100/ir,2))
+
         
 pm.run([cmd, cmd2], mapping_genome_bam, follow=check_alignment_genome)
+
+#check insert size distribution
+if args.paired_end:
+    is_prefix = os.path.join(map_genome_folder, args.sample_name)
+    is_file = is_prefix +  ".is.txt"
+    is_pdf = is_prefix + ".is.pdf"
+    is_png = is_prefix + ".is.png"
+    cmd = tools.samtools + " view " + mapping_genome_bam + " | awk '{print $9}' > " + is_file
+    pm.run(cmd, is_file)
+    #R script for plotting
+    fraglen_script = os.path.join(os.path.dirname(__file__), "frag_distribution.R")
+    cmd = "Rscript " + fraglen_script + " " + args.sample_name + " " + is_file + " " + map_genome_folder
+    pm.run(cmd, is_pdf) 
+    pm.report_object("Insert size distribution", is_pdf, anchor_image=is_png)
+    #clean file
+    pm.clean_add(is_file)
 
 #Index Bam file
 cmd = tools.samtools + " index " + mapping_genome_bam
@@ -359,7 +371,7 @@ def check_duplicates():
         pm.report_result("Percent_duplication", percdup)
 
 #Remove duplicates
-cmd = "java -jar " + tools.picard + " MarkDuplicates -I " + mapping_genome_bam
+cmd = tools.picard + " MarkDuplicates -I " + mapping_genome_bam
 cmd += " -O " + mapping_genome_bam_dedup + " -M " + mapping_genome_bam_dedup_metrics
 pm.run(cmd, mapping_genome_bam_dedup, follow=check_duplicates)
 
@@ -378,6 +390,43 @@ pm.run(cmd, mapping_genome_bam_dedup_unique_bw)
 
 #Clean Temporary Files
 pm.clean_add(mapping_genome_bam_dedup)
+
+
+############################################################################
+#                    Read filtering for insert size                        #
+############################################################################
+if (args.protocol == "CT" or args.protocol == "CR") and args.paired_end:
+    mapping_genome_bam_dedup_unique_nuc = mapping_genome_bam_star_path + "dedup.unique.nuc.bam"
+    mapping_genome_bam_dedup_unique_nuc_idx = mapping_genome_bam_star_path + "dedup.unique.nuc.bam.bai"
+    mapping_genome_bam_dedup_unique_nuc_bw = mapping_genome_bam_star_path + "dedup.unique.nuc.bw"
+    mapping_genome_bam_dedup_unique_subnuc = mapping_genome_bam_star_path + "dedup.unique.subnuc.bam"
+    mapping_genome_bam_dedup_unique_subnuc_idx = mapping_genome_bam_star_path + "dedup.unique.subnuc.bam.bai"
+    mapping_genome_bam_dedup_unique_subnuc_bw = mapping_genome_bam_star_path + "dedup.unique.subnuc.bw"
+    
+    #nucleosomal reads (insert size >= 120 = insert size^2 > 14400)
+    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique 
+    cmd += " | awk \'substr($0,1,1)==\"@\" || ($9^2 >= 14400)\' | "
+    cmd += tools.samtools + " view -b > " + mapping_genome_bam_dedup_unique_nuc
+    pm.run (cmd, mapping_genome_bam_dedup_unique_nuc, shell=True)
+    cmd = tools.samtools + " index " + mapping_genome_bam_dedup_unique_nuc
+    pm.run (cmd, mapping_genome_bam_dedup_unique_nuc_idx)
+
+    cmd = tools.bamcoverage + " --bam " + mapping_genome_bam_dedup_unique_nuc
+    cmd += " -o " + mapping_genome_bam_dedup_unique_nuc_bw + " --binSize 10 --normalizeUsing RPKM"
+    pm.run(cmd, mapping_genome_bam_dedup_unique_nuc_bw)
+
+
+    #nucleosomal reads (insert size < 120)
+    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique 
+    cmd += " | awk \'substr($0,1,1)==\"@\" || ($9^2 < 14400)\' | "
+    cmd += tools.samtools + " view -b > " + mapping_genome_bam_dedup_unique_subnuc
+    pm.run (cmd, mapping_genome_bam_dedup_unique_subnuc, shell=True)
+    cmd = tools.samtools + " index " + mapping_genome_bam_dedup_unique_subnuc
+    pm.run (cmd, mapping_genome_bam_dedup_unique_subnuc_idx)
+
+    cmd = tools.bamcoverage + " --bam " + mapping_genome_bam_dedup_unique_subnuc
+    cmd += " -o " + mapping_genome_bam_dedup_unique_subnuc_bw + " --binSize 10 --normalizeUsing RPKM"
+    pm.run(cmd, mapping_genome_bam_dedup_unique_subnuc_bw)
 
 ############################################################################
 #                          IAP Coverage                                    #
@@ -460,7 +509,7 @@ pm.clean_add(feature_counts_temp)
 cmd = tools.featureCounts + " -F SAF -T 1 -s 0 -a " + SAFid
 if args.paired_end:
     cmd+= " -p "
-cmd += " -o " + feature_counts_temp + " " + mapping_genome_bam_dedup_unique
+cmd += " -o " + feature_counts_result_id + " " + mapping_genome_bam_dedup_unique
 
 pm.run(cmd, feature_counts_result_id)
 
