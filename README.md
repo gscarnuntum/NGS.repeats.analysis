@@ -8,13 +8,13 @@ The following experiments (protocols) are currently supported: RNA-seq, ChIP-seq
 
 The pipeline requires installation in a fresh conda environment. The following steps are necessary:
 
-1. Create fresh conda environment
+Create fresh conda environment
 
     conda env create -n ngs Python=3.9
     conda activate ngs
     conda update -n base -c defaults conda
 
-2. Install python packages
+Install python packages
 
     conda install -c bioconda samtools
     conda install -c bioconda bedtools
@@ -27,7 +27,7 @@ The pipeline requires installation in a fresh conda environment. The following s
     conda install -c bioconda star
 
 
-3. Install R libraries
+Install R libraries
 
 open terminal an start R
 
@@ -41,7 +41,7 @@ open terminal an start R
 
     BiocManager::install("SummarizedExperiment")
 
-4. Install Looper
+Install Looper
 
     python -m pip install looper
     python -m pip install piper
