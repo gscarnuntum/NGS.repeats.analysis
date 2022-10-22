@@ -29,7 +29,7 @@ Install python packages
 
 Install R libraries
 
-open terminal an start R
+open terminal and start R
 
     install.packages("argparser")
     install.packages("pepr")
