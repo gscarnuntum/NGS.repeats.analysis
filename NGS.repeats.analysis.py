@@ -134,7 +134,7 @@ if args.paired_end:
 else:
     untrimmed_fastq1 = unaligned_fastq
     untrimmed_fastq2 = None
-    
+
 # Also run a fastqc (if installed/requested)
 fastqc_folder = os.path.join(outfolder, "fastqc")
 fastqc_report = os.path.join(fastqc_folder,
@@ -183,7 +183,7 @@ if ngstk.check_command(tools.fastqc):
     ngstk.make_dir(fastqc_folder)
 
 pm.info("trimmomatic local_input_files: {}".format(local_input_files))
- 
+
 trim_cmd_chunks = [
     "{trim} {PE} -threads {cores}".format(
         trim=tools.trimmomatic,
@@ -201,7 +201,7 @@ trim_cmd = build_command(trim_cmd_chunks)
 
 def check_trim():
     pm.info("Evaluating read trimming")
-        
+
     if args.paired_end and not trimmed_fastq_R2:
         pm.warning("Specified paired-end but no R2 file")
 
@@ -276,8 +276,8 @@ else:
 if args.protocol == "RNA":
     #annotated genomes for RNA-seq
     cmd = "STAR" + " --runThreadN " + str(pm.cores)
-    cmd += " --quantMode TranscriptomeSAM GeneCounts --outSAMtype BAM SortedByCoordinate --runMode alignReads --outFilterMultimapNmax 5000 --outSAMmultNmax 1 --outFilterMismatchNmax 3 --outMultimapperOrder Random --winAnchorMultimapNmax 5000 --alignEndsType EndToEnd --seedSearchStartLmax 30 --alignTranscriptsPerReadNmax 30000 --alignWindowsPerReadNmax 30000 --alignTranscriptsPerWindowNmax 300 --seedPerReadNmax 3000 --seedPerWindowNmax 300 --seedNoneLociPerWindow 1000 --genomeDir " + STAR_index  
-    cmd += " --readFilesCommand zcat --readFilesIn " + unmap_fq1 
+    cmd += " --quantMode TranscriptomeSAM GeneCounts --outSAMtype BAM SortedByCoordinate --runMode alignReads --outFilterMultimapNmax 5000 --outSAMmultNmax 1 --outFilterMismatchNmax 3 --outMultimapperOrder Random --winAnchorMultimapNmax 5000 --alignEndsType EndToEnd --seedSearchStartLmax 30 --alignTranscriptsPerReadNmax 30000 --alignWindowsPerReadNmax 30000 --alignTranscriptsPerWindowNmax 300 --seedPerReadNmax 3000 --seedPerWindowNmax 300 --seedNoneLociPerWindow 1000 --genomeDir " + STAR_index
+    cmd += " --readFilesCommand zcat --readFilesIn " + unmap_fq1
     if args.paired_end:
                 cmd += " " + unmap_fq2 + " "
     cmd += " --outFileNamePrefix " + mapping_genome_bam_star_path
@@ -285,8 +285,8 @@ if args.protocol == "RNA":
 else:
     #non-annotated genomes and for others
     cmd = "STAR" + " --runThreadN " + str(pm.cores)
-    cmd += " --outSAMtype BAM SortedByCoordinate --runMode alignReads --outFilterMultimapNmax 5000 --outSAMmultNmax 1 --outFilterMismatchNmax 3 --outMultimapperOrder Random --winAnchorMultimapNmax 5000 --alignEndsType EndToEnd --alignIntronMax 1 --alignMatesGapMax 350 --seedSearchStartLmax 30 --alignTranscriptsPerReadNmax 30000 --alignWindowsPerReadNmax 30000 --alignTranscriptsPerWindowNmax 300 --seedPerReadNmax 3000 --seedPerWindowNmax 300 --seedNoneLociPerWindow 1000 --genomeDir " + STAR_genome_index 
-    cmd += " --readFilesCommand zcat --readFilesIn " + unmap_fq1 
+    cmd += " --outSAMtype BAM SortedByCoordinate --runMode alignReads --outFilterMultimapNmax 5000 --outSAMmultNmax 1 --outFilterMismatchNmax 3 --outMultimapperOrder Random --winAnchorMultimapNmax 5000 --alignEndsType EndToEnd --alignIntronMax 1 --alignMatesGapMax 350 --seedSearchStartLmax 30 --alignTranscriptsPerReadNmax 30000 --alignWindowsPerReadNmax 30000 --alignTranscriptsPerWindowNmax 300 --seedPerReadNmax 3000 --seedPerWindowNmax 300 --seedNoneLociPerWindow 1000 --genomeDir " + STAR_genome_index
+    cmd += " --readFilesCommand zcat --readFilesIn " + unmap_fq1
     if args.paired_end:
                 cmd += " " + unmap_fq2 + " "
     cmd += " --outFileNamePrefix " + mapping_genome_bam_star_path
@@ -315,21 +315,21 @@ def check_alignment_genome():
      pm.report_result("Unique_Mapping_rate", round((ur)*100/ir,2))
      pm.report_result("Multi_Mapping_rate", round((mmr+mmxr)*100/ir,2))
 
-        
+
 pm.run([cmd, cmd2], mapping_genome_bam, follow=check_alignment_genome)
 
 #check insert size distribution
-if args.paired_end:
+if args.paired_end and (not args.protocol == "RNA"):
     is_prefix = os.path.join(map_genome_folder, args.sample_name)
     is_file = is_prefix +  ".is.txt"
-    is_pdf = is_prefix + ".is.pdf"
-    is_png = is_prefix + ".is.png"
+    is_pdf = is_prefix + ".fraglen.pdf"
+    is_png = is_prefix + ".fraglen.png"
     cmd = tools.samtools + " view " + mapping_genome_bam + " | awk '{print $9}' > " + is_file
     pm.run(cmd, is_file)
     #R script for plotting
     fraglen_script = os.path.join(os.path.dirname(__file__), "frag_distribution.R")
     cmd = "Rscript " + fraglen_script + " " + args.sample_name + " " + is_file + " " + map_genome_folder
-    pm.run(cmd, is_pdf) 
+    pm.run(cmd, is_pdf)
     pm.report_object("Insert size distribution", is_pdf, anchor_image=is_png)
     #clean file
     pm.clean_add(is_file)
@@ -402,9 +402,9 @@ if (args.protocol == "CT" or args.protocol == "CR") and args.paired_end:
     mapping_genome_bam_dedup_unique_subnuc = mapping_genome_bam_star_path + "dedup.unique.subnuc.bam"
     mapping_genome_bam_dedup_unique_subnuc_idx = mapping_genome_bam_star_path + "dedup.unique.subnuc.bam.bai"
     mapping_genome_bam_dedup_unique_subnuc_bw = mapping_genome_bam_star_path + "dedup.unique.subnuc.bw"
-    
+
     #nucleosomal reads (insert size >= 120 = insert size^2 > 14400)
-    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique 
+    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique
     cmd += " | awk \'substr($0,1,1)==\"@\" || ($9^2 >= 14400)\' | "
     cmd += tools.samtools + " view -b > " + mapping_genome_bam_dedup_unique_nuc
     pm.run (cmd, mapping_genome_bam_dedup_unique_nuc, shell=True)
@@ -417,7 +417,7 @@ if (args.protocol == "CT" or args.protocol == "CR") and args.paired_end:
 
 
     #nucleosomal reads (insert size < 120)
-    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique 
+    cmd = tools.samtools + " view -h " + mapping_genome_bam_dedup_unique
     cmd += " | awk \'substr($0,1,1)==\"@\" || ($9^2 < 14400)\' | "
     cmd += tools.samtools + " view -b > " + mapping_genome_bam_dedup_unique_subnuc
     pm.run (cmd, mapping_genome_bam_dedup_unique_subnuc, shell=True)
