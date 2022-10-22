@@ -4,7 +4,7 @@ NGS.repeats.analysis is a pipeline for mapping and quality control of NGS datase
 
 The following experiments (protocols) are currently supported: RNA-seq, ChIP-seq, Cut&Run, Cut&Tag, ATAC-sequencing
 
-#Installation
+## Installation
 
 The pipeline requires installation in a fresh conda environment. The following steps are necessary:
 
