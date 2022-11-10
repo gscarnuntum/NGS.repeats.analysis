@@ -2,9 +2,9 @@
 #
 # NGS.repeats.summarizer.R
 #
-# Interface to produce project level summary files and reports 
+# Interface to produce project level summary files and reports
 # for NGS output when called using `looper`
-# usage: Rscript /path/to/Rscript/NGS.repeats.summarizer.R 
+# usage: Rscript /path/to/Rscript/NGS.repeats.summarizer.R
 #        /path/to/project_config.yaml
 # Depends: R (>= 3.5.1)
 # Imports: PEPATACr, argparser
@@ -58,7 +58,7 @@ argv <- parse_args(p)
 #' @param samples A PEP project character vector of sample names
 #' @param results_subdir A PEP project results subdirectory path
 #' @export
-createStatsSummary <- function(samples, results_subdir) {  
+createStatsSummary <- function(samples, results_subdir) {
     # Create stats_summary file
     missing_files   <- 0
     write(paste0("Creating stats summary..."), stdout())
@@ -71,7 +71,7 @@ createStatsSummary <- function(samples, results_subdir) {
             missing_files <- missing_files + 1
             next
         }
-	
+
         t <- fread(sample_assets_file, header=FALSE,
                    col.names=c('stat', 'val', 'annotation'))
         # Remove complete duplicates
@@ -115,7 +115,7 @@ project_protocol <- unique(invisible(suppressWarnings(pepr::sampleTable(prj)$pro
 project_samples <- pepr::sampleTable(prj)$sample_name
 #sample_table    <- data.table(sample_name=pepr::sampleTable(prj)$sample_name,
 #                              genome=pepr::sampleTable(prj)$genome)
-	
+
 sample_table <- data.table(prj@samples)
 
 # Set the output directory
@@ -160,7 +160,7 @@ feature_counts_rds <- file.path(summary_dir,
                                  paste0(project_name, '_fc_summary.rds'))
 for (sample in project_samples) {
   sample_output_folder <- file.path(results_subdir, sample)
-  sample_fc_file   <- file.path(sample_output_folder, "feature_counts", 
+  sample_fc_file   <- file.path(sample_output_folder, "feature_counts",
                                 paste(sample,".fc.txt",sep=""))
   t <- fread(sample_fc_file, header=F,
              col.names=c('repeatID', 'length', sample), skip = 2)
@@ -191,7 +191,7 @@ feature_counts_id_rds <- file.path(summary_dir,
                                  paste0(project_name, '_fc_id_summary.rds'))
 for (sample in project_samples) {
   sample_output_folder <- file.path(results_subdir, sample)
-  sample_fc_file   <- file.path(sample_output_folder, "feature_counts", 
+  sample_fc_file   <- file.path(sample_output_folder, "feature_counts",
                                 paste(sample,".fc.id.txt",sep=""))
   t <- fread(sample_fc_file, header=F,
              col.names=c('repeatID', 'chr', 'start', 'end', 'strand', 'length', sample), skip = 2)
@@ -219,10 +219,12 @@ if (genome =="mm10")
 
 	IAP_coverage_file <- file.path(summary_dir,
                                  paste0(project_name, '_IAP_coverage_summary.tsv'))
+  IAP_coverage_rds <- file.path(summary_dir,
+                                 paste0(project_name, '_IAP_coverage_summary.rds'))
 
 	for (sample in project_samples) {
 	  sample_output_folder <- file.path(results_subdir, sample)
-	  sample_IAP_coverage_file   <- file.path(sample_output_folder, "IAP_coverage", 
+	  sample_IAP_coverage_file   <- file.path(sample_output_folder, "IAP_coverage",
 	                                paste(sample,".IAP.norm.coverage.txt",sep=""))
 	  cf <- fread(sample_IAP_coverage_file, header=F,
         	     col.names=c(sample))
@@ -233,8 +235,15 @@ if (genome =="mm10")
 	    coverage <- cf[,c(2,1)]
 	  }
 	}
-	fwrite(coverage, file = IAP_coverage_file, sep="\t", 
+	fwrite(coverage, file = IAP_coverage_file, sep="\t",
         	    col.names=TRUE, row.names=F, quote=F)
+
+#generate SummarizedExperiment
+cm <- as.matrix(coverage[,2:ncol(coverage)])
+rownames(cm) <- coverage$pos
+cov.se <- SummarizedExperiment(assays = list(IAP.coverage=cm), colData = sample_table)
+saveRDS(cov.se, file = IAP_coverage_rds)
+
 
 	# Generate IAP coverage plots
 	write(paste0("Creating IAP coverage plots..."), stdout())
@@ -269,7 +278,7 @@ if (project_protocol == "RNA") {
                                 paste0(project_name, '_gene_counts_summary.tsv'))
 	for (sample in project_samples) {
 		sample_output_folder <- file.path(results_subdir, sample)
-		sample_gc_file   <- file.path(sample_output_folder, paste("aligned_",genome,sep=""), 
+		sample_gc_file   <- file.path(sample_output_folder, paste("aligned_",genome,sep=""),
                                 paste(sample,".ReadsPerGene.out.tab",sep=""))
 		t <- fread(sample_gc_file, header=F,
 				col.names=c('geneID', 'unstranded', sample, 'antisense'), skip = 4)
@@ -281,7 +290,7 @@ if (project_protocol == "RNA") {
 	}
 	fwrite(gct, gene_counts_file, sep="\t", col.names=TRUE)
 
-	#Summarized Experiment	
+	#Summarized Experiment
 	gene_counts_rds <- file.path(summary_dir,
                                 paste0(project_name, '_gene_counts_summary.rds'))
 	gcm <- as.matrix(gct[,2:ncol(gct)])
