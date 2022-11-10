@@ -16,7 +16,7 @@ command_template: >
 compute:
   mem: 20G
   cores: 32
-  partition: slim16
+  partition: slim18
   time: 8:00:00
 var_templates:
   refgenie_config: "$REFGENIE"

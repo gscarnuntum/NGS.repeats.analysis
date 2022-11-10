@@ -428,6 +428,64 @@ if (args.protocol == "CT" or args.protocol == "CR") and args.paired_end:
     cmd += " -o " + mapping_genome_bam_dedup_unique_subnuc_bw + " --binSize 10 --normalizeUsing RPKM"
     pm.run(cmd, mapping_genome_bam_dedup_unique_subnuc_bw)
 
+
+    ############################################################################
+    #                          Determine TSS enrichment                        #
+    ############################################################################
+if args.protocol == "ATAC":
+    if not os.path.exists(res.refgene_tss):
+        print("Skipping TSS -- TSS enrichment requires TSS annotation file: {}"
+              .format(res.refgene_tss))
+    else:
+        pm.timestamp("### Calculate TSS enrichment")
+
+        Tss_enrich = os.path.join(QC_folder, args.sample_name +
+                                  "_TSS_enrichment.txt")
+        cmd = tool_path("pyTssEnrichment.py")
+        cmd += " -a " + mapping_genome_bam_dedup_unique + " -b " + res.refgene_tss + " -p ends"
+        cmd += " -c " + str(pm.cores)
+        cmd += " -z -v -s 6 -o " + Tss_enrich
+        pm.run(cmd, Tss_enrich, nofail=True)
+
+        if not pm.get_stat('TSS_score') or args.new_start:
+            with open(Tss_enrich) as f:
+                floats = list(map(float, f))
+            try:
+                # If the TSS enrichment is 0, don't report
+                list_len = 0.05*float(len(floats))
+                normTSS = [x / (sum(floats[1:int(list_len)]) /
+                           len(floats[1:int(list_len)])) for x in floats]
+                max_index = normTSS.index(max(normTSS))
+
+                if (((normTSS[max_index]/normTSS[max_index-1]) > 1.5) and
+                    ((normTSS[max_index]/normTSS[max_index+1]) > 1.5)):
+                    tmpTSS = list(normTSS)
+                    del tmpTSS[max_index]
+                    max_index = tmpTSS.index(max(tmpTSS)) + 1
+
+                Tss_score = round(
+                    (sum(normTSS[int(max_index-50):int(max_index+50)])) /
+                    (len(normTSS[int(max_index-50):int(max_index+50)])), 1)
+
+                pm.report_result("TSS_score", round(Tss_score, 1))
+            except ZeroDivisionError:
+                pm.report_result("TSS_score", 0)
+                pass
+
+        # Call Rscript to plot TSS Enrichment
+        # Tss_pdf = os.path.join(QC_folder,  args.sample_name +
+        #                        "_TSS_enrichment.pdf")
+        # Tss_png = os.path.join(QC_folder,  args.sample_name +
+        #                        "_TSS_enrichment.png")
+        # cmd = (tools.Rscript + " " + tool_path("PEPATAC.R") +
+        #        " tss -i " + Tss_enrich)
+        # pm.run(cmd, Tss_pdf, nofail=True)
+        #
+        # pm.report_object("TSS enrichment", Tss_pdf, anchor_image=Tss_png)
+
+
+
+
 ############################################################################
 #                          IAP Coverage                                    #
 ############################################################################
@@ -447,13 +505,13 @@ if args.genome_assembly == "mm10":
 
     #generate Coverage using bedtools coverage
     #Plus orientation
-    cmd = tools.bedtools + " coverage -d -a " + res.gag_plus
+    cmd = tools.bedtools + " coverage -sorted -d -a " + res.gag_plus
     cmd += " -b " + mapping_genome_bam
     cmd += " > " + IAP_plus
     pm.run(cmd, IAP_plus)
 
     #Minus Orientation
-    cmd = tools.bedtools + " coverage -d -a " + res.gag_minus
+    cmd = tools.bedtools + " coverage -sorted -d -a " + res.gag_minus
     cmd += " -b " + mapping_genome_bam
     cmd += " > " + IAP_minus
     pm.run(cmd, IAP_minus)
