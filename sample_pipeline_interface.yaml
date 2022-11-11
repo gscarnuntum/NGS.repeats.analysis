@@ -14,7 +14,7 @@ command_template: >
   --protocol { sample.protocol }
   
 compute:
-  mem: 20G
+  mem: 50G
   cores: 32
   partition: slim18
   time: 8:00:00

@@ -505,13 +505,13 @@ if args.genome_assembly == "mm10":
 
     #generate Coverage using bedtools coverage
     #Plus orientation
-    cmd = tools.bedtools + " coverage -sorted -d -a " + res.gag_plus
+    cmd = tools.bedtools + " coverage -g " + res.mm10_fai + " -sorted -d -a " + res.gag_plus
     cmd += " -b " + mapping_genome_bam
     cmd += " > " + IAP_plus
     pm.run(cmd, IAP_plus)
 
     #Minus Orientation
-    cmd = tools.bedtools + " coverage -sorted -d -a " + res.gag_minus
+    cmd = tools.bedtools + " coverage -g " + res.mm10_fai + " -sorted -d -a " + res.gag_minus
     cmd += " -b " + mapping_genome_bam
     cmd += " > " + IAP_minus
     pm.run(cmd, IAP_minus)
