@@ -23,7 +23,7 @@ Install python packages
     conda install -c bioconda subread
     conda install -c bioconda trimmomatic
     conda install -c bioconda picard
-    conda install -c bioconda deeptools
+    conda install -c conda-forge -c bioconda deeptools
     conda install -c bioconda star
 
 
