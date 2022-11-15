@@ -176,7 +176,7 @@ fwrite(fc, feature_counts_file, sep="\t", col.names=TRUE)
 #generate SummarizedExperiment
 fcm <- as.matrix(fc[,3:ncol(fc)])
 rownames(fcm) <- fc$repeatID
-fc.se <- SummarizedExperiment(assays = list("fc"=fcm), colData = sample_table)
+fc.se <- SummarizedExperiment(assays = list(counts=fcm), colData = sample_table)
 saveRDS(fc.se, file = feature_counts_rds)
 
 
@@ -207,7 +207,7 @@ fwrite(fcid, feature_counts_id_file, sep="\t", col.names=TRUE)
 #generate SummarizedExperiment
 fcidm <- as.matrix(fcid[,7:ncol(fcid)])
 rownames(fcidm) <- fcid$repeatID
-fcid.se <- SummarizedExperiment(assays = list(fcid=fcidm), colData = sample_table)
+fcid.se <- SummarizedExperiment(assays = list(counts=fcidm), colData = sample_table)
 saveRDS(fcid.se, file = feature_counts_id_rds)
 
 
@@ -295,6 +295,6 @@ if (project_protocol == "RNA") {
                                 paste0(project_name, '_gene_counts_summary.rds'))
 	gcm <- as.matrix(gct[,2:ncol(gct)])
 	rownames(gcm) <- gct$geneID
-	gc.se <- SummarizedExperiment(assays = list(gc=gcm), colData = sample_table)
+	gc.se <- SummarizedExperiment(assays = list(counts=gcm), colData = sample_table)
 	saveRDS(gc.se, file = gene_counts_rds)
 }
