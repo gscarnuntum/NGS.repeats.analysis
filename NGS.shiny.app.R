@@ -45,32 +45,27 @@ shinyApp(
     options(shiny.maxRequestSize = 500 * 1024^2)
     
     observe({
-      if (isEmpty(input$rds.file)) {shinyjs::disable("analyze")
+      if (isEmpty(input$rds.file$datapath)) {shinyjs::disable("analyze")
       } else {
         shinyjs::enable("analyze")}
-      # if (input$select.study.a =="") {
-      #   shinyjs::disable("analyze")
-      # } else {
-      #   shinyjs::enable("analyze")
-      # }
     })
     
     #enable analyze when sample selection changes
     observeEvent(input$select.study.a, {
       req(input$select.study.a, input$select.study.a!="NA")
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     }) 
     observeEvent(input$select.study.b, {
       req(input$select.study.b, input$select.study.b!="NA")
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     }) 
     observeEvent(input$select.genotype.a, {
       req(input$select.genotype.a, input$select.genotype.a!="NA")
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     }) 
     observeEvent(input$select.genotype.b, {
       req(input$select.genotype.b, input$select.genotype.b!="NA")
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     }) 
     
     #set genotypes according to target and study
@@ -85,7 +80,7 @@ shinyApp(
       names(genotype) <- genotype
       updateSelectInput (session, "select.genotype.a", choices = genotype)
       #activate analyze when selection was changed
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     })
     observeEvent(input$select.target.b, {
       req(input$select.target.b, input$select.target.b!="NA")
@@ -98,7 +93,7 @@ shinyApp(
       names(genotype) <- genotype
       updateSelectInput (session, "select.genotype.b", choices = genotype)
       #activate analyze when selection was changed
-      if (samples()$a != samples()$b) {shinyjs::enable("analyze")}
+      if (samples()$a != samples()$b) {shinyjs::enable("analyze")} else {shinyjs::disable("analyze")}
     })
     
     #load rds file if requested
@@ -106,7 +101,7 @@ shinyApp(
       {
         rds <- input$rds.file
 
-        if (!isEmpty(rds))
+        if (!isEmpty(rds$datapath))
         {  
         se <- readRDS(rds$datapath)
         return(list("se"=se, "sl"=colData(se)))
@@ -153,19 +148,20 @@ shinyApp(
       if (samples()$a != samples()$b)
       {
         shinyjs::disable("analyze")
-        withProgress(message = 'Making plot', value = 0, {
+        
         plots <- deseq.analysis ()
       
         output$pca.analysis <- renderPlot(plots$pca)
         output$degenes <- renderPlotly(plots$degenes)
         output$detable = renderDT(plots$detable)
-        })
+        
       }
     })
     
     #Deseq analysis, summarized experiment, study, target, comparison A vs B
     deseq.analysis <- reactive ( 
     {
+      withProgress(message = 'prepare data', value = 0, {
       #assign input values to variables
       se <- se()$se
       study.a <- input$select.study.a
@@ -181,9 +177,13 @@ shinyApp(
       dt <- as.matrix(assays(se)$counts)
       sample.list <- as.data.frame(colData(se))
       
+      setProgress(message = "Deseq2 analysis", value = 0.1)
+      
       dds <- DESeqDataSetFromMatrix(countData = dt, colData = sample.list, design = ~ genotype)
       dds <- dds[ rowMeans(counts(dds)) > 1, ]
       des <- DESeq(dds)
+      
+      setProgress(message = "vsd analysis", value = 0.6)
       
       vsd <- vst(dds, blind=F)
       mat <- assay(vsd)
@@ -200,6 +200,8 @@ shinyApp(
         xlab(paste0("PC1: ", percentVar[1], "% variance")) +
         ylab(paste0("PC2: ", percentVar[2], "% variance"))
       
+      setProgress(message = "calculate contrasts", value = 0.8)
+      
       degenes <- results(des, contrast = c("genotype", gt.a, gt.b))
       degenes.sig <- subset(degenes, padj < 0.05)
       des.shrink <- as.data.frame(lfcShrink(type = "normal", contrast = c("genotype", gt.a, gt.b), des))
@@ -214,6 +216,8 @@ shinyApp(
       down.shrink <- des.shrink[rownames(des.shrink) %in% down,]
       down.shrink$geneID <- rownames(down.shrink)
       
+      setProgress(message = "prepare plots", value = 0.9)
+      
       degenes <- ggplot(data = des.shrink, aes(baseMean,log2FoldChange,label=rownames(des.shrink))) + 
         scale_x_log10() + geom_point() + 
         geom_point (data = up.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "red") +
@@ -225,6 +229,7 @@ shinyApp(
       detable = as.data.frame(des.shrink)
       
       return (list("pca"=pca, "degenes"=degenes, "detable"=detable))
+      })
     })
  
     #Render plot according to table selection
