@@ -5,61 +5,6 @@ library(DT)
 library(plotly)
 library(shinyjs)
 
-
-deseq.analysis <- function (se, study.a, target.a, gt.a, study.b, target.b, gt.b) #summarized experiment, study, target, comparison A vs B
-{
-  se.a <- se[,se$study == study.a & se$target == target.a & se$genotype == gt.a]
-  se.b <- se[,se$study == study.b & se$target == target.b & se$genotype == gt.b]
-  se <- cbind(se.a, se.b)
-  dt <- as.matrix(assays(se)$counts)
-  sample.list <- as.data.frame(colData(se))
-  
-  dds <- DESeqDataSetFromMatrix(countData = dt, colData = sample.list, design = ~ genotype)
-  dds <- dds[ rowMeans(counts(dds)) > 1, ]
-  des <- DESeq(dds)
-
-  vsd <- vst(dds, blind=F)
-  mat <- assay(vsd)
-  assay(vsd) <- mat 
-  
-  p <- plotPCA(vsd, intgroup = "genotype",  returnData = TRUE)
-  percentVar <- round(100 * attr(p, "percentVar"))
-  
-  pca <- ggplot(p, aes(x = PC1, y = PC2, color= genotype, label=name)) +
-    geom_point(size =3) +
-    geom_text(hjust = -0.2, nudge_y = 0.1, size=4) +
-    scale_color_manual(values=c("darkorange", "grey30")) +
-    theme(legend.position = "bottom") +
-    xlab(paste0("PC1: ", percentVar[1], "% variance")) +
-    ylab(paste0("PC2: ", percentVar[2], "% variance"))
-  
-  degenes <- results(des, contrast = c("genotype", gt.a, gt.b))
-  degenes.sig <- subset(degenes, padj < 0.05)
-  des.shrink <- as.data.frame(lfcShrink(type = "normal", contrast = c("genotype", gt.a, gt.b), des))
-  up <- des.shrink[rownames(des.shrink) %in% rownames(degenes.sig) & des.shrink$log2FoldChange>0,]
-  down <- des.shrink[rownames(des.shrink) %in% rownames(degenes.sig) & des.shrink$log2FoldChange< 0,]
-  
-  up <- rownames(up)
-  down <- rownames(down)
- 
-  up.shrink <- des.shrink[rownames(des.shrink) %in% up,]
-  up.shrink$geneID <- rownames(up.shrink)
-  down.shrink <- des.shrink[rownames(des.shrink) %in% down,]
-  down.shrink$geneID <- rownames(down.shrink)
-  
-  degenes <- ggplot(data = des.shrink, aes(baseMean,log2FoldChange,labels=rownames(des.shrink))) + 
-    scale_x_log10() + geom_point() + 
-    geom_point (data = up.shrink, aes(baseMean,log2FoldChange,labels=geneID), color = "red") +
-    geom_point (data = down.shrink, aes(baseMean,log2FoldChange,labels=geneID), color = "blue") +
-    labs (x="average normalized Expression", 
-          y=paste("log2fc",study.a,".",target.a,".",gt.a," vs. ",study.b,".",target.b,".",gt.b, sep="")) +
-    theme(axis.title.y = element_text(size = rel(0.8)))
-  
-  detable = as.data.frame(des.shrink)
-  
-  return (list("pca"=pca, "degenes"=degenes, "detable"=detable))
-}
-
 shinyApp(
   ui = fluidPage(
     useShinyjs(),
@@ -209,9 +154,7 @@ shinyApp(
       {
         shinyjs::disable("analyze")
         withProgress(message = 'Making plot', value = 0, {
-        plots <- deseq.analysis (se()$se, input$select.study.a, input$select.target.a, 
-                      input$select.genotype.a, input$select.study.b, input$select.target.b, 
-                      input$select.genotype.b)
+        plots <- deseq.analysis ()
       
         output$pca.analysis <- renderPlot(plots$pca)
         output$degenes <- renderPlotly(plots$degenes)
@@ -219,6 +162,86 @@ shinyApp(
         })
       }
     })
+    
+    #Deseq analysis, summarized experiment, study, target, comparison A vs B
+    deseq.analysis <- reactive ( 
+    {
+      #assign input values to variables
+      se <- se()$se
+      study.a <- input$select.study.a
+      target.a <- input$select.target.a
+      gt.a <- input$select.genotype.a
+      study.b <- input$select.study.b
+      target.b <- input$select.target.b 
+      gt.b <- input$select.genotype.b
+      
+      se.a <- se[,se$study == study.a & se$target == target.a & se$genotype == gt.a]
+      se.b <- se[,se$study == study.b & se$target == target.b & se$genotype == gt.b]
+      se <- cbind(se.a, se.b)
+      dt <- as.matrix(assays(se)$counts)
+      sample.list <- as.data.frame(colData(se))
+      
+      dds <- DESeqDataSetFromMatrix(countData = dt, colData = sample.list, design = ~ genotype)
+      dds <- dds[ rowMeans(counts(dds)) > 1, ]
+      des <- DESeq(dds)
+      
+      vsd <- vst(dds, blind=F)
+      mat <- assay(vsd)
+      assay(vsd) <- mat 
+      
+      p <- plotPCA(vsd, intgroup = "genotype",  returnData = TRUE)
+      percentVar <- round(100 * attr(p, "percentVar"))
+      
+      pca <- ggplot(p, aes(x = PC1, y = PC2, color= genotype, label=name)) +
+        geom_point(size =3) +
+        geom_text(hjust = -0.2, nudge_y = 0.1, size=4) +
+        scale_color_manual(values=c("darkorange", "grey30")) +
+        theme(legend.position = "bottom") +
+        xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+        ylab(paste0("PC2: ", percentVar[2], "% variance"))
+      
+      degenes <- results(des, contrast = c("genotype", gt.a, gt.b))
+      degenes.sig <- subset(degenes, padj < 0.05)
+      des.shrink <- as.data.frame(lfcShrink(type = "normal", contrast = c("genotype", gt.a, gt.b), des))
+      up <- des.shrink[rownames(des.shrink) %in% rownames(degenes.sig) & des.shrink$log2FoldChange>0,]
+      down <- des.shrink[rownames(des.shrink) %in% rownames(degenes.sig) & des.shrink$log2FoldChange< 0,]
+      
+      up <- rownames(up)
+      down <- rownames(down)
+      
+      up.shrink <- des.shrink[rownames(des.shrink) %in% up,]
+      up.shrink$geneID <- rownames(up.shrink)
+      down.shrink <- des.shrink[rownames(des.shrink) %in% down,]
+      down.shrink$geneID <- rownames(down.shrink)
+      
+      degenes <- ggplot(data = des.shrink, aes(baseMean,log2FoldChange,label=rownames(des.shrink))) + 
+        scale_x_log10() + geom_point() + 
+        geom_point (data = up.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "red") +
+        geom_point (data = down.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "blue") +
+        labs (x="average normalized Expression", 
+              y=paste("log2fc",study.a,".",target.a,".",gt.a," vs. ",study.b,".",target.b,".",gt.b, sep="")) +
+        theme(axis.title.y = element_text(size = rel(0.8)))
+      
+      detable = as.data.frame(des.shrink)
+      
+      return (list("pca"=pca, "degenes"=degenes, "detable"=detable))
+    })
  
+    #Render plot according to table selection
+    observeEvent(input$detable_rows_selected, {
+      plots <- deseq.analysis()
+      data <- plots$detable
+      selplot <- plots$degenes + 
+        geom_point (data = data[input$detable_rows_selected,], 
+                    aes(baseMean,log2FoldChange, 
+                        label=rownames(data[input$detable_rows_selected,])), 
+                    color = "green", size = 2) + 
+        geom_text (data = data[input$detable_rows_selected,], 
+                    aes(baseMean,log2FoldChange,fontface = "bold", 
+                        label=rownames(data[input$detable_rows_selected,])),
+                   color = "green", hjust = 0, nudge_x = 0.05)
+      selplotly <- ggplotly (selplot) %>% style(textposition = "right")
+      output$degenes <- renderPlotly(selplotly)
+    })
   }
 )
