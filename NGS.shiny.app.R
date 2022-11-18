@@ -219,9 +219,9 @@ shinyApp(
       setProgress(message = "prepare plots", value = 0.9)
       
       degenes <- ggplot(data = des.shrink, aes(baseMean,log2FoldChange,label=rownames(des.shrink))) + 
-        scale_x_log10() + geom_point() + 
-        geom_point (data = up.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "red") +
-        geom_point (data = down.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "blue") +
+        scale_x_log10() + geom_point(color="gray") + 
+        geom_point (data = up.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "coral1") +
+        geom_point (data = down.shrink, aes(baseMean,log2FoldChange,label=geneID), color = "steelblue3") +
         labs (x="average normalized Expression", 
               y=paste("log2fc",study.a,".",target.a,".",gt.a," vs. ",study.b,".",target.b,".",gt.b, sep="")) +
         theme(axis.title.y = element_text(size = rel(0.8)))
@@ -240,11 +240,12 @@ shinyApp(
         geom_point (data = data[input$detable_rows_selected,], 
                     aes(baseMean,log2FoldChange, 
                         label=rownames(data[input$detable_rows_selected,])), 
-                    color = "green", size = 2) + 
+                    color = "darkgreen", size = 2) + 
         geom_text (data = data[input$detable_rows_selected,], 
                     aes(baseMean,log2FoldChange,fontface = "bold", 
                         label=rownames(data[input$detable_rows_selected,])),
-                   color = "green", hjust = 0, nudge_x = 0.05)
+                   color = "black", hjust = 0, nudge_x = 0.05)
+      
       selplotly <- ggplotly (selplot) %>% style(textposition = "right")
       output$degenes <- renderPlotly(selplotly)
     })
