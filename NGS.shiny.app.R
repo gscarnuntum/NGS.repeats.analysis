@@ -233,21 +233,28 @@ shinyApp(
     })
  
     #Render plot according to table selection
-    observeEvent(input$detable_rows_selected, {
-      plots <- deseq.analysis()
-      data <- plots$detable
-      selplot <- plots$degenes + 
-        geom_point (data = data[input$detable_rows_selected,], 
-                    aes(baseMean,log2FoldChange, 
-                        label=rownames(data[input$detable_rows_selected,])), 
-                    color = "darkgreen", size = 2) + 
-        geom_text (data = data[input$detable_rows_selected,], 
-                    aes(baseMean,log2FoldChange,fontface = "bold", 
-                        label=rownames(data[input$detable_rows_selected,])),
-                   color = "black", hjust = 0, nudge_x = 0.05)
-      
-      selplotly <- ggplotly (selplot) %>% style(textposition = "right")
-      output$degenes <- renderPlotly(selplotly)
+    observeEvent(input$detable_rows_selected, ignoreNULL = FALSE, {
+      if (!isEmpty(input$rds.file$datapath))
+      {
+        plots <- deseq.analysis()
+        data <- plots$detable
+        selplot <- plots$degenes
+        if (!is.null(input$detable_rows_selected))
+          {
+          selplot <- selplot +
+            geom_point (data = data[input$detable_rows_selected,],
+                      aes(baseMean,log2FoldChange,
+                          label=rownames(data[input$detable_rows_selected,])),
+                      color = "darkgreen", size = 2) +
+            geom_text (data = data[input$detable_rows_selected,],
+                      aes(baseMean,log2FoldChange,fontface = "bold",
+                          label=rownames(data[input$detable_rows_selected,])),
+                     color = "black", hjust = 0, nudge_x = 0.05)
+          }
+        selplotly <- ggplotly (selplot) %>% style(textposition = "right")
+        output$degenes <- renderPlotly(selplotly)
+      }
+      else {return()}
     })
   }
 )
