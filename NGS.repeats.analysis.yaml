@@ -37,7 +37,7 @@ resources:
   STARgenome_mm10: /work/project/becgsc_001/genomes/mm10/STARgenome
   STAR_hg38: /work/project/becgsc_001/genomes/hg38/STAR
   STARgenome_hg38: /work/project/becgsc_001/genomes/hg38/STARgenome
-  refgene_tss: /work/project/becgsc_001/genomes/mm10/Annotation/Genes/mm10_TSS_sorted.bed
+  refgene_tss: /work/project/becgsc_001/genomes/mm10/Annotation/Genes/mm10_TSS.bed
   mm10_fai: /work/project/becgsc_001/genomes/mm10/Sequence/WholeGenomeFasta/genome.fa.fai
 
 parameters:  # parameters passed to bioinformatic tools, subclassed by tool

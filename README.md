@@ -11,10 +11,10 @@ The pipeline requires installation in a fresh conda environment. The following s
 ***first use of conda:*** install Anaconda3 from https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html
 initialize conda base environment:
     conda init
-	
+
 update conda packages:
 
-    conda update -n base -c defaults conda 
+    conda update -n base -c defaults conda
 
 add conda-forge and bioconda channels:
 
@@ -46,6 +46,7 @@ open terminal and start R
     install.packages("pepr")
     install.packages("reshape2")
     install.packages("ggplot2")
+    install.packages("optigrab")
 
     if (!require("BiocManager", quietly = TRUE))
         install.packages("BiocManager")
@@ -65,4 +66,3 @@ adjust path and configuration settings in:
 * NGS.repeats.analysis.yaml
 * sample_pipeline_interface.yaml
 * project_pipeline_interface.yaml
-

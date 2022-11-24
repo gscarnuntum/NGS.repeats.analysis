@@ -52,6 +52,16 @@ tools = pm.config.tools
 param = pm.config.parameters
 res = pm.config.resources
 
+def tool_path(tool_name):
+    """
+    Return the path to a tool used by this pipeline.
+
+    :param str tool_name: name of the tool (e.g., a script file_name)
+    :return str: real, absolute path to tool (expansion and symlink resolution)
+    """
+
+    return os.path.join(os.path.dirname(__file__), tool_name)
+
 
 ############################################################################
 #          Check that the input file(s) exist before continuing            #
@@ -253,6 +263,10 @@ map_genome_folder = os.path.join(outfolder,
                                  "aligned_" + args.genome_assembly)
 ngstk.make_dir(map_genome_folder)
 
+#Prepare QC folder
+QC_folder = os.path.join(outfolder, "QC_" + args.genome_assembly)
+ngstk.make_dir(QC_folder)
+
 # Primary endpoint file following alignment and deduplication
 mapping_genome_bam_star_path = map_genome_folder + "/" + args.sample_name + "."
 mapping_genome_bam_star = mapping_genome_bam_star_path + "Aligned.sortedByCoord.out.bam"
@@ -320,7 +334,7 @@ pm.run([cmd, cmd2], mapping_genome_bam, follow=check_alignment_genome)
 
 #check insert size distribution
 if args.paired_end and (not args.protocol == "RNA"):
-    is_prefix = os.path.join(map_genome_folder, args.sample_name)
+    is_prefix = os.path.join(QC_folder, args.sample_name)
     is_file = is_prefix +  ".is.txt"
     is_pdf = is_prefix + ".fraglen.pdf"
     is_png = is_prefix + ".fraglen.png"
@@ -328,7 +342,7 @@ if args.paired_end and (not args.protocol == "RNA"):
     pm.run(cmd, is_file)
     #R script for plotting
     fraglen_script = os.path.join(os.path.dirname(__file__), "frag_distribution.R")
-    cmd = "Rscript " + fraglen_script + " " + args.sample_name + " " + is_file + " " + map_genome_folder
+    cmd = "Rscript " + fraglen_script + " " + args.sample_name + " " + is_file + " " + QC_folder
     pm.run(cmd, is_pdf)
     pm.report_object("Insert size distribution", is_pdf, anchor_image=is_png)
     #clean file
@@ -431,6 +445,7 @@ if (args.protocol == "CT" or args.protocol == "CR") and args.paired_end:
 
     ############################################################################
     #                          Determine TSS enrichment                        #
+    #           taken from PEPATAC Pipeline                                    #
     ############################################################################
 if args.protocol == "ATAC":
     if not os.path.exists(res.refgene_tss):
@@ -445,6 +460,7 @@ if args.protocol == "ATAC":
         cmd += " -a " + mapping_genome_bam_dedup_unique + " -b " + res.refgene_tss + " -p ends"
         cmd += " -c " + str(pm.cores)
         cmd += " -z -v -s 6 -o " + Tss_enrich
+        print(cmd)
         pm.run(cmd, Tss_enrich, nofail=True)
 
         if not pm.get_stat('TSS_score') or args.new_start:
@@ -473,17 +489,13 @@ if args.protocol == "ATAC":
                 pass
 
         # Call Rscript to plot TSS Enrichment
-        # Tss_pdf = os.path.join(QC_folder,  args.sample_name +
-        #                        "_TSS_enrichment.pdf")
-        # Tss_png = os.path.join(QC_folder,  args.sample_name +
-        #                        "_TSS_enrichment.png")
-        # cmd = (tools.Rscript + " " + tool_path("PEPATAC.R") +
-        #        " tss -i " + Tss_enrich)
-        # pm.run(cmd, Tss_pdf, nofail=True)
-        #
-        # pm.report_object("TSS enrichment", Tss_pdf, anchor_image=Tss_png)
+        Tss_pdf = os.path.join(QC_folder, args.sample_name + "_TSS_enrichment.pdf")
+        Tss_png = os.path.join(QC_folder, args.sample_name + "_TSS_enrichment.png")
+        cmd = (tools.Rscript + " " + tool_path("plot.TSS.enrichment.R") +
+                " -i " + Tss_enrich)
+        pm.run(cmd, Tss_pdf, nofail=True)
 
-
+        pm.report_object("TSS enrichment", Tss_pdf, anchor_image=Tss_png)
 
 
 ############################################################################

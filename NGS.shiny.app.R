@@ -180,7 +180,7 @@ shinyApp(
       setProgress(message = "Deseq2 analysis", value = 0.1)
       
       dds <- DESeqDataSetFromMatrix(countData = dt, colData = sample.list, design = ~ genotype)
-      dds <- dds[ rowMeans(counts(dds)) > 1, ]
+      dds <- dds[ rowMeans(counts(dds)) > 10, ]
       des <- DESeq(dds)
       
       setProgress(message = "vsd analysis", value = 0.6)
